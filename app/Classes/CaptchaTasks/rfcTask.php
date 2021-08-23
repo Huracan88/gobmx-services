@@ -30,6 +30,8 @@ class rfcTask
         $this->token = rand(1111,9999);
         $this->captchaImage = storage_path("app/captcha-images/captcha_sat_". $this->token .".png");
 
+
+
     }
 
     private function getViewState(){
@@ -99,6 +101,8 @@ class rfcTask
         if(file_exists($this->cookieJar)){
             unlink($this->cookieJar);
         }
+
+        UniRequest::curlOpt(CURLOPT_SSL_CIPHER_LIST,'DEFAULT:!DH');
 
         UniRequest::verifyPeer(false);
         UniRequest::cookieFile($this->cookieJar);
