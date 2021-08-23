@@ -55,8 +55,8 @@ class CurpController extends Controller
             $page->tryCatch->waitForXPath($titleSelector,['timeout'=>2500]);
 
             //take screenshot
-            $screenshot = 'sc_'.date('YmdHis').'.png';
-            $page->screenshot( ['path' => storage_path('app/puppeter-screenshots/'.$screenshot) ]);
+//            $screenshot = 'sc_'.date('YmdHis').'.png';
+//            $page->screenshot( ['path' => storage_path('app/puppeter-screenshots/'.$screenshot) ]);
 
 
             $curpSelector = '#ember335 > section > div > div > div.col-xs-12.col-sm-12.col-md-12.clearfix > form > div.row.clearfix > div.col-md-7 > div > div.panel-body > table > tr:nth-child(1) > td:nth-child(2)';
