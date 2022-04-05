@@ -14,11 +14,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::post('/cfdi-validation', [\App\Http\Controllers\CfdiValidationController::class, 'getCfdiValidation']);
+
 Route::middleware('auth:sanctum')->group(function(){
 
     Route::get('/curp-info/{curp}', [\App\Http\Controllers\CurpController::class, 'getCurpInfo']);
     Route::get('/rfc-validation/{rfc}', [\App\Http\Controllers\RfcController::class, 'validateRfc']);
+//    Route::post('/cfdi-validation', [\App\Http\Controllers\CfdiValidationController::class, 'getCfdiValidation']);
 
+    Route::post('/cfdi-sentre-tramite', [\App\Http\Controllers\CfdiValidationController::class, 'getCfdiValidation']);
+    Route::post('/sentre-27', [\App\Http\Controllers\SentreController::class, 'getListadoDocumental']);
+
+
+    Route::get('/sipoa', [\App\Http\Controllers\SipoaController::class, 'test']);
 });
 
 Route::get('/get-new-token/{user}', [\App\Http\Controllers\AccessTokenController::class, 'getNewToken']);
