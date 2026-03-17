@@ -418,8 +418,8 @@ class SentreController extends Controller
             $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
             $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
             $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
-            $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
-            $page->querySelectorEval('select[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
+            $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, substr($record->clasificacion,0,1) ?? '');
+            $page->querySelectorEval('select[name="caracter"]', $setValueFunction, substr($record->caracter_documental,0,1) ?? 'X');
             $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
 
             // Hacer click en guardar
