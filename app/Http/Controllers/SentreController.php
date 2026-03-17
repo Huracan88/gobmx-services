@@ -16,6 +16,41 @@ class SentreController extends Controller
 {
 
 
+    private function loginSentre($page, $username, $password)
+    {
+        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+        $page->goto($loginURL);
+
+        $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
+            ->body("el.value = setText");
+
+        $page->querySelectorEval('#login', $setValueFunction, $username);
+        $page->querySelectorEval('#password', $setValueFunction, $password);
+        $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
+
+        $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
+        $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 5000]);
+    }
+
+    private function logoutSentre($page, $browser)
+    {
+        if (!$browser) return;
+
+        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+        $closeSessionUrl = 'http://sentre.sabgob.qroo.gob.mx/sistema/exit.php';
+
+        try {
+            $page->goto($closeSessionUrl);
+            $page->goto($loginURL);
+            $logoutSelector = '//*[@id="wrap"]/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[1]/td/div';
+            $page->tryCatch->waitForXPath($logoutSelector, ['timeout' => 2000]);
+        } catch (\Exception $e) {
+            // Ignorar errores al cerrar sesión
+        } finally {
+            $browser->close();
+        }
+    }
+
     public function getListadoDocumental(Request $request){
         set_time_limit(0); // Eliminar limite de tiempo para procesos largos
 
@@ -29,10 +64,7 @@ class SentreController extends Controller
 
 //        dd($data);
 
-        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
-        $closeSessionUrl = 'http://sentre.sabgob.qroo.gob.mx/sistema/exit.php';
         $baseURL = $this->getBaseUrl($data['action']);
-
 
         $puppeteer = new Puppeteer;
         $browser = $puppeteer->launch();
@@ -45,71 +77,62 @@ class SentreController extends Controller
             'deviceScaleFactor' => 1,
         ]);
 
-        $page->goto($loginURL);
-
-        /////////////////////////////////////
-        $setValueFunction = (new JsFunction)->parameters(['el','setText'])
-            ->body("el.value = setText");
-
-        $getInnerTextFunction = (new JsFunction)->parameters(['el'])
-            ->body(" return el.innerText");
-
-        $getAttributeFunction = (new JsFunction)->parameters(['el','attribute'])
-            ->body(" return el.getAttribute(attribute) ");
-
-        $getEditLinksFunction = (new JsFunction)->parameters(['tableSelector'])
-            ->body("
-                let table = document.querySelector(tableSelector);
-                let results = [];
-                if (table) {
-                    let rows = table.querySelectorAll('tr.list');
-                    rows.forEach(row => {
-                        let editLink = row.querySelector('td:first-child a[href*=\"frmanexo27c.php\"]');
-                        let checkbox = row.querySelector('td:first-child input[type=\"checkbox\"]');
-                        let id = '';
-                        if (checkbox) {
-                            id = checkbox.value;
-                        } else if (editLink) {
-                            let url = new URL(editLink.href);
-                            id = url.searchParams.get('id_anexo');
-                        }
-                        results.push({
-                            href: editLink ? editLink.href : null,
-                            id: id
-                        });
-                    });
-                }
-                return results;
-            ");
-
-        $getRowsFunction = (new JsFunction)->parameters(['tableSelector'])
-            ->body("
-                let table = document.querySelector(tableSelector);
-                let results = [];
-                if (table) {
-                    let rows = table.querySelectorAll('tr.list');
-                    rows.forEach(row => {
-                        let cells = row.querySelectorAll('td');
-                        let rowData = [];
-                        cells.forEach(cell => {
-                            rowData.push(cell.innerText.trim());
-                        });
-                        results.push(rowData);
-                    });
-                }
-                return results;
-            ");
-        /////////////////////////////
-
-
-        $page->querySelectorEval('#login',$setValueFunction,$data['sentre_user']);
-        $page->querySelectorEval('#password',$setValueFunction,$data['sentre_password']);
-        $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
-
         try{
+            $this->loginSentre($page, $data['sentre_user'], $data['sentre_password']);
 
-            $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
-            $page->tryCatch->waitForXPath($titleSelector,['timeout'=>2500]);
+            /////////////////////////////////////
+            $setValueFunction = (new JsFunction)->parameters(['el','setText'])
+                ->body("el.value = setText");
+
+            $getInnerTextFunction = (new JsFunction)->parameters(['el'])
+                ->body(" return el.innerText");
+
+            $getAttributeFunction = (new JsFunction)->parameters(['el','attribute'])
+                ->body(" return el.getAttribute(attribute) ");
+
+            $getEditLinksFunction = (new JsFunction)->parameters(['tableSelector'])
+                ->body("
+                    let table = document.querySelector(tableSelector);
+                    let results = [];
+                    if (table) {
+                        let rows = table.querySelectorAll('tr.list');
+                        rows.forEach(row => {
+                            let editLink = row.querySelector('td:first-child a[href*=\"frmanexo27c.php\"]');
+                            let checkbox = row.querySelector('td:first-child input[type=\"checkbox\"]');
+                            let id = '';
+                            if (checkbox) {
+                                id = checkbox.value;
+                            } else if (editLink) {
+                                let url = new URL(editLink.href);
+                                id = url.searchParams.get('id_anexo');
+                            }
+                            results.push({
+                                href: editLink ? editLink.href : null,
+                                id: id
+                            });
+                        });
+                    }
+                    return results;
+                ");
+
+            $getRowsFunction = (new JsFunction)->parameters(['tableSelector'])
+                ->body("
+                    let table = document.querySelector(tableSelector);
+                    let results = [];
+                    if (table) {
+                        let rows = table.querySelectorAll('tr.list');
+                        rows.forEach(row => {
+                            let cells = row.querySelectorAll('td');
+                            let rowData = [];
+                            cells.forEach(cell => {
+                                rowData.push(cell.innerText.trim());
+                            });
+                            results.push(rowData);
+                        });
+                    }
+                    return results;
+                ");
+            /////////////////////////////
 
             //pagina principal del listado
             $page->goto($baseURL);
@@ -266,27 +289,7 @@ class SentreController extends Controller
                 }
             }
 
-            $page->goto($closeSessionUrl);
-            $page->goto($loginURL);
-            $logoutSelector = '//*[@id="wrap"]/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[1]/td/div';
-            $page->tryCatch->waitForXPath($logoutSelector,['timeout'=>1000]);
-
-            //armamos el archivo csv si se solicita
-            if (isset($data['generate_csv']) && $data['generate_csv']) {
-                $fp = fopen(storage_path('app/sentre/' . $data['sentre_user']. '_'.$data['action'].'_'.date('YmdHis') .'.csv' ), 'w');
-
-                $titles =  array_map(function(&$entry){return $entry = utf8_decode($entry);},$titles);
-
-                fputcsv($fp, $titles);
-                foreach ($records as $row){
-                    $row =  array_map(function(&$entry){return $entry = utf8_decode($entry);},$row);
-                    fputcsv($fp, $row);
-                }
-                fclose($fp);
-            }
-            ///////////////////////////////////
-
-            $browser->close();
+            $this->logoutSentre($page, $browser);
             $browser = null;
 
             $data = [
@@ -303,10 +306,7 @@ class SentreController extends Controller
 
             if (isset($browser)) {
                 $this->takeScreenshot($page);
-
-                $page->goto($closeSessionUrl);
-                $page->goto($loginURL);
-                $browser->close();
+                $this->logoutSentre($page, $browser);
             }
 
             $data = [
@@ -318,10 +318,7 @@ class SentreController extends Controller
         }catch(\Exception $e){
             if (isset($browser)) {
                 $this->takeScreenshot($page);
-
-                $page->goto($closeSessionUrl);
-                $page->goto($loginURL);
-                $browser->close();
+                $this->logoutSentre($page, $browser);
             }
             $data = [
                 'code'=>'500',
@@ -374,11 +371,14 @@ class SentreController extends Controller
 
     public function syncRecordToRemote(Request $request)
     {
+
+
         $data = $this->validate($request, [
             'sentre_user' => 'required',
             'sentre_password' => 'required',
-            'record_id' => 'required|exists:sentre_records,id',
+            'record_id' => 'required|exists:sentre_records,record_id',
         ]);
+
 
         $record = SentreRecord::findOrFail($data['record_id']);
         $sentreUser = SentreUser::where('username', $data['sentre_user'])->first();
@@ -390,29 +390,20 @@ class SentreController extends Controller
             ], 403);
         }
 
-        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
         $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
-        $submitURL = $this->getEditFormUrl($record->type);
 
         $puppeteer = new Puppeteer;
         $browser = $puppeteer->launch();
         $page = $browser->newPage();
 
         try {
-            $page->goto($loginURL);
-
-            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
-                ->body("el.value = setText");
-
-            $page->querySelectorEval('#login', $setValueFunction, $data['sentre_user']);
-            $page->querySelectorEval('#password', $setValueFunction, $data['sentre_password']);
-            $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
-
-            // Esperar a que el login se procese
-            $page->waitForNavigation();
+            $this->loginSentre($page, $data['sentre_user'], $data['sentre_password']);
 
             // Navegar al formulario de edición
             $page->goto($editURL);
+
+            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
+                ->body("el.value = setText");
 
             // Llenar el formulario con los datos de la DB
             $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
@@ -437,7 +428,7 @@ class SentreController extends Controller
             // Esperar un momento para que aparezca el mensaje de éxito
             $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
 
-            $browser->close();
+            $this->logoutSentre($page, $browser);
             $browser = null;
 
             return response()->json([
@@ -448,11 +439,111 @@ class SentreController extends Controller
         } catch (\Exception $e) {
             if (isset($browser)) {
                 $this->takeScreenshot($page);
-                $browser->close();
+                $this->logoutSentre($page, $browser);
             }
             return response()->json([
                 'code' => '500',
                 'message' => 'Error al sincronizar con el servidor remoto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function syncAllRecordsByYear(Request $request)
+    {
+        set_time_limit(0);
+        $data = $this->validate($request, [
+            'sentre_user' => 'required',
+            'sentre_password' => 'required',
+            'year' => 'required',
+            'type' => 'nullable|in:concentracion,baja,tramite,historico',
+        ]);
+
+        $sentreUser = SentreUser::where('username', $data['sentre_user'])->first();
+        if (!$sentreUser) {
+            return response()->json([
+                'code' => '404',
+                'message' => 'Usuario no encontrado.'
+            ], 404);
+        }
+
+        $query = SentreRecord::where('sentre_user_id', $sentreUser->id)
+            ->where('anio_creacion', $data['year']);
+
+        if (isset($data['type'])) {
+            $query->where('type', $data['type']);
+        }
+
+        $records = $query->get();
+
+        if ($records->isEmpty()) {
+            return response()->json([
+                'code' => '200',
+                'message' => 'No se encontraron registros para el año proporcionado.'
+            ]);
+        }
+
+        $puppeteer = new Puppeteer;
+        $browser = $puppeteer->launch();
+        $page = $browser->newPage();
+
+        $successCount = 0;
+        $errorCount = 0;
+        $errors = [];
+
+        try {
+            $this->loginSentre($page, $data['sentre_user'], $data['sentre_password']);
+            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
+                ->body("el.value = setText");
+
+            foreach ($records as $record) {
+                try {
+                    $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
+                    $page->goto($editURL);
+
+                    // Llenar el formulario
+                    $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
+                    $page->querySelectorEval('input[name="expediente"]', $setValueFunction, $record->expediente ?? '');
+                    $page->querySelectorEval('textarea[name="descripcion"]', $setValueFunction, $record->descripcion ?? '');
+                    $page->querySelectorEval('input[name="antiguedad"]', $setValueFunction, $record->anio_creacion ?? '');
+                    $page->querySelectorEval('input[name="per_del"]', $setValueFunction, $record->fecha_inicio ?? '');
+                    $page->querySelectorEval('input[name="per_al"]', $setValueFunction, $record->fecha_final ?? '');
+                    $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
+                    $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
+                    $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
+                    $page->querySelectorEval('input[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
+                    $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
+                    $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
+                    $page->querySelectorEval('input[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
+                    $page->querySelectorEval('input[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
+                    $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
+
+                    $page->click('input[name="modificar"]');
+                    $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
+
+                    $successCount++;
+                } catch (\Exception $e) {
+                    $errorCount++;
+                    $errors[] = "Error en registro ID {$record->record_id}: " . $e->getMessage();
+                }
+            }
+
+            $this->logoutSentre($page, $browser);
+            $browser = null;
+
+            return response()->json([
+                'code' => '200',
+                'message' => "Proceso de sincronización completado. Éxitos: $successCount, Errores: $errorCount",
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            if (isset($browser)) {
+                $this->takeScreenshot($page);
+                $this->logoutSentre($page, $browser);
+            }
+            return response()->json([
+                'code' => '500',
+                'message' => 'Error crítico durante la sincronización masiva: ' . $e->getMessage()
             ], 500);
         }
     }
