@@ -16,3 +16,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/sentre', [\App\Http\Controllers\SentreViewController::class, 'index'])->name('sentre.index');
+Route::get('/sentre/{id}', [\App\Http\Controllers\SentreViewController::class, 'show'])->name('sentre.show');
