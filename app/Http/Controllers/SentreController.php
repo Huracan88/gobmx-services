@@ -29,7 +29,7 @@ class SentreController extends Controller
         $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
 
         $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
-        $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 5000]);
+        $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 10000]);
     }
 
     private function logoutSentre($page, $browser)
@@ -530,7 +530,7 @@ class SentreController extends Controller
         $page->click('input[name="modificar"]');
 
         // Esperar mensaje de éxito
-        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
+        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 15000]);
     }
 
     private function takeScreenshot($page){
