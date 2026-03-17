@@ -95,7 +95,7 @@
                         <button type="button" class="btn btn-sm btn-info text-white" onclick="showDetails({{ $record->id }})">
                             Detalles
                         </button>
-                        <button type="button" class="btn btn-sm btn-success" id="sync-btn-{{ $record->id }}" onclick="syncRemote({{ $record->id }})">
+                        <button type="button" class="btn btn-sm btn-success" id="sync-btn-{{ $record->record_id }}" onclick="syncRemote('{{ $record->record_id }}')">
                             Sincronizar
                         </button>
                     </td>

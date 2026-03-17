@@ -380,7 +380,7 @@ class SentreController extends Controller
         ]);
 
 
-        $record = SentreRecord::findOrFail($data['record_id']);
+        $record = SentreRecord::where('record_id', $data['record_id'])->firstOrFail();
         $sentreUser = SentreUser::where('username', $data['sentre_user'])->first();
 
         if (!$sentreUser || $record->sentre_user_id !== $sentreUser->id) {
@@ -415,11 +415,11 @@ class SentreController extends Controller
             $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
             $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
             $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
-            $page->querySelectorEval('input[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
+            $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
             $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
             $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
-            $page->querySelectorEval('input[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
-            $page->querySelectorEval('input[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
+            $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
+            $page->querySelectorEval('select[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
             $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
 
             // Hacer click en guardar
@@ -510,11 +510,11 @@ class SentreController extends Controller
                     $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
                     $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
                     $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
-                    $page->querySelectorEval('input[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
+                    $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
                     $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
                     $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
-                    $page->querySelectorEval('input[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
-                    $page->querySelectorEval('input[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
+                    $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
+                    $page->querySelectorEval('select[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
                     $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
 
                     $page->click('input[name="modificar"]');
