@@ -29,7 +29,7 @@ class SentreController extends Controller
         $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
 
         $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
-        $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 10000]);
+        $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 15000]);
     }
 
     private function logoutSentre($page, $browser)
@@ -400,6 +400,8 @@ class SentreController extends Controller
             // Llamada al método abstraído
             $this->processRecordUpdate($page, $record);
 
+            $record->update(['last_sync_up' => now()]);
+
             $this->logoutSentre($page, $browser);
             $browser = null;
 
@@ -439,7 +441,8 @@ class SentreController extends Controller
         }
 
         $query = SentreRecord::where('sentre_user_id', $sentreUser->id)
-            ->where('anio_creacion', $data['year']);
+            ->where('anio_creacion', $data['year'])
+            ->whereNull('last_sync_up');
 
         if (isset($data['type'])) {
             $query->where('type', $data['type']);
@@ -469,6 +472,8 @@ class SentreController extends Controller
                 try {
                     // Llamada al método abstraído
                     $this->processRecordUpdate($page, $record);
+
+                    $record->update(['last_sync_up' => now()]);
 
                     $successCount++;
                 } catch (\Exception $e) {

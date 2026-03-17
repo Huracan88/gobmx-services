@@ -28,6 +28,7 @@ class SentreRecord extends Model
         'no_hojas',
         'preservacion',
         'observaciones',
+        'last_sync_up',
     ];
 
     public function user()
