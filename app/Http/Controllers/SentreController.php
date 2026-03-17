@@ -390,8 +390,6 @@ class SentreController extends Controller
             ], 403);
         }
 
-        $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
-
         $puppeteer = new Puppeteer;
         $browser = $puppeteer->launch();
         $page = $browser->newPage();
@@ -399,34 +397,8 @@ class SentreController extends Controller
         try {
             $this->loginSentre($page, $data['sentre_user'], $data['sentre_password']);
 
-            // Navegar al formulario de edición
-            $page->goto($editURL);
-
-            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
-                ->body("el.value = setText");
-
-            // Llenar el formulario con los datos de la DB
-            $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
-            $page->querySelectorEval('input[name="expediente"]', $setValueFunction, $record->expediente ?? '');
-            $page->querySelectorEval('textarea[name="descripcion"]', $setValueFunction, $record->descripcion ?? '');
-            $page->querySelectorEval('input[name="antiguedad"]', $setValueFunction, $record->anio_creacion ?? '');
-            $page->querySelectorEval('input[name="per_del"]', $setValueFunction, $record->fecha_inicio ?? '');
-            $page->querySelectorEval('input[name="per_al"]', $setValueFunction, $record->fecha_final ?? '');
-            $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
-            $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
-            $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
-            $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
-            $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
-            $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
-            $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, substr($record->clasificacion,0,1) ?? '');
-            $page->querySelectorEval('select[name="caracter"]', $setValueFunction, substr($record->caracter_documental,0,1) ?? 'X');
-            $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
-
-            // Hacer click en guardar
-            $page->click('input[name="modificar"]');
-
-            // Esperar un momento para que aparezca el mensaje de éxito
-            $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
+            // Llamada al método abstraído
+            $this->processRecordUpdate($page, $record);
 
             $this->logoutSentre($page, $browser);
             $browser = null;
@@ -492,33 +464,11 @@ class SentreController extends Controller
 
         try {
             $this->loginSentre($page, $data['sentre_user'], $data['sentre_password']);
-            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
-                ->body("el.value = setText");
 
             foreach ($records as $record) {
                 try {
-                    $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
-                    $page->goto($editURL);
-
-                    // Llenar el formulario
-                    $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
-                    $page->querySelectorEval('input[name="expediente"]', $setValueFunction, $record->expediente ?? '');
-                    $page->querySelectorEval('textarea[name="descripcion"]', $setValueFunction, $record->descripcion ?? '');
-                    $page->querySelectorEval('input[name="antiguedad"]', $setValueFunction, $record->anio_creacion ?? '');
-                    $page->querySelectorEval('input[name="per_del"]', $setValueFunction, $record->fecha_inicio ?? '');
-                    $page->querySelectorEval('input[name="per_al"]', $setValueFunction, $record->fecha_final ?? '');
-                    $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
-                    $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
-                    $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
-                    $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
-                    $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
-                    $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
-                    $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
-                    $page->querySelectorEval('select[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
-                    $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
-
-                    $page->click('input[name="modificar"]');
-                    $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
+                    // Llamada al método abstraído
+                    $this->processRecordUpdate($page, $record);
 
                     $successCount++;
                 } catch (\Exception $e) {
@@ -546,6 +496,41 @@ class SentreController extends Controller
                 'message' => 'Error crítico durante la sincronización masiva: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function processRecordUpdate($page, $record)
+    {
+        $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
+        $page->goto($editURL);
+
+        $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
+            ->body("el.value = setText");
+
+        // Llenar el formulario con los datos de la DB
+        $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
+        $page->querySelectorEval('input[name="expediente"]', $setValueFunction, $record->expediente ?? '');
+        $page->querySelectorEval('textarea[name="descripcion"]', $setValueFunction, $record->descripcion ?? '');
+        $page->querySelectorEval('input[name="antiguedad"]', $setValueFunction, $record->anio_creacion ?? '');
+        $page->querySelectorEval('input[name="per_del"]', $setValueFunction, $record->fecha_inicio ?? '');
+        $page->querySelectorEval('input[name="per_al"]', $setValueFunction, $record->fecha_final ?? '');
+        $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
+        $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
+        $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
+        $page->querySelectorEval('select[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
+        $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
+        $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
+
+        // Aplicando la lógica de la primera letra para clasificación y carácter
+        $page->querySelectorEval('select[name="clasificacion"]', $setValueFunction, isset($record->clasificacion) ? substr($record->clasificacion, 0, 1) : '');
+        $page->querySelectorEval('select[name="caracter"]', $setValueFunction, isset($record->caracter_documental) ? substr($record->caracter_documental, 0, 1) : 'X');
+
+        $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
+
+        // Hacer click en guardar
+        $page->click('input[name="modificar"]');
+
+        // Esperar mensaje de éxito
+        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
     }
 
     private function takeScreenshot($page){
