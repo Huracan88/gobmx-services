@@ -59,4 +59,31 @@ class SentreViewController extends Controller
         $record->append('is_incomplete');
         return response()->json($record);
     }
+
+    public function update(Request $request, $id)
+    {
+        $record = SentreRecord::findOrFail($id);
+
+        $data = $request->validate([
+            'fecha_transferencia' => 'nullable|string',
+            'expediente' => 'nullable|string',
+            'descripcion' => 'nullable|string',
+            'anio_creacion' => 'nullable|string',
+            'fecha_inicio' => 'nullable|string',
+            'fecha_final' => 'nullable|string',
+            'tiempo_conservacion' => 'nullable|string',
+            'no_legajos' => 'nullable|string',
+            'no_hojas' => 'nullable|string',
+            'preservacion' => 'nullable|string',
+            'ubicacion_fisica' => 'nullable|string',
+            'no_caja' => 'nullable|string',
+            'clasificacion' => 'nullable|string',
+            'caracter_documental' => 'nullable|string',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        $record->update($data);
+
+        return response()->json(['code' => '200', 'message' => 'Registro actualizado exitosamente en la base de datos local.']);
+    }
 }

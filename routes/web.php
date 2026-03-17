@@ -19,3 +19,4 @@ Route::get('/', function () {
 
 Route::get('/sentre', [\App\Http\Controllers\SentreViewController::class, 'index'])->name('sentre.index');
 Route::get('/sentre/{id}', [\App\Http\Controllers\SentreViewController::class, 'show'])->name('sentre.show');
+Route::post('/sentre/{id}', [\App\Http\Controllers\SentreViewController::class, 'update'])->name('sentre.update');
