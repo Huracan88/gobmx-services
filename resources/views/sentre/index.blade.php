@@ -9,6 +9,9 @@
         body { background-color: #f4f7f6; }
         .card { margin-bottom: 20px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
         .table-responsive { background: white; border-radius: 8px; }
+        .row-incomplete { border-left: 5px solid #dc3545; background-color: #fff8f8; }
+        .text-missing { color: #dc3545; font-weight: bold; font-size: 0.85em; }
+        .pagination svg { width: 1.25rem; height: 1.25rem; }
     </style>
 </head>
 <body>
@@ -50,9 +53,15 @@
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">Filtrar</button>
                 </div>
-                <div class="col-md-12 mt-2">
+                <div class="col-md-9 mt-2">
                     <label for="descripcion" class="form-label">Descripción</label>
                     <input type="text" name="descripcion" id="descripcion" class="form-control" value="{{ request('descripcion') }}" placeholder="Buscar en la descripción...">
+                </div>
+                <div class="col-md-3 mt-2 d-flex align-items-end pb-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="incomplete" id="incomplete" value="1" {{ request('incomplete') ? 'checked' : '' }} onchange="this.form.submit()">
+                        <label class="form-check-label" for="incomplete">Expediente incompleto</label>
+                    </div>
                 </div>
             </form>
         </div>
@@ -74,7 +83,7 @@
             </thead>
             <tbody>
             @forelse($records as $record)
-                <tr>
+                <tr class="{{ $record->is_incomplete ? 'row-incomplete' : '' }}">
                     <td>{{ $record->record_id }}</td>
                     <td>{{ $record->expediente }}</td>
                     <td>{{ Str::limit($record->descripcion, 50) }}</td>
@@ -85,6 +94,9 @@
                     <td>
                         <button type="button" class="btn btn-sm btn-info text-white" onclick="showDetails({{ $record->id }})">
                             Detalles
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success" id="sync-btn-{{ $record->id }}" onclick="syncRemote({{ $record->id }})">
+                            Sincronizar
                         </button>
                     </td>
                 </tr>
@@ -128,9 +140,13 @@
         document.getElementById('modalBody').innerHTML = '<div class="text-center">Cargando...</div>';
         modal.show();
 
+        const missing = '<span class="text-missing">Faltante</span>';
+
         fetch(`/sentre/${id}`)
             .then(response => response.json())
             .then(data => {
+                const checkMissing = (val) => val ? val : missing;
+
                 let html = `
                     <div class="row">
                         <div class="col-md-6"><p><strong>ID Record:</strong> ${data.record_id}</p></div>
@@ -140,18 +156,18 @@
                         <div class="col-md-12"><p><strong>Descripción:</strong> ${data.descripcion || 'N/A'}</p></div>
                         <hr>
                         <div class="col-md-4"><p><strong>Año Creación:</strong> ${data.anio_creacion || 'N/A'}</p></div>
-                        <div class="col-md-4"><p><strong>Inicio:</strong> ${data.fecha_inicio || 'N/A'}</p></div>
-                        <div class="col-md-4"><p><strong>Final:</strong> ${data.fecha_final || 'N/A'}</p></div>
+                        <div class="col-md-4"><p><strong>Inicio:</strong> ${checkMissing(data.fecha_inicio)}</p></div>
+                        <div class="col-md-4"><p><strong>Final:</strong> ${checkMissing(data.fecha_final)}</p></div>
                         <hr>
                         <div class="col-md-6"><p><strong>Ubicación Física:</strong> ${data.ubicacion_fisica || 'N/A'}</p></div>
-                        <div class="col-md-3"><p><strong>No. Caja:</strong> ${data.no_caja || 'N/A'}</p></div>
-                        <div class="col-md-3"><p><strong>T. Conservación:</strong> ${data.tiempo_conservacion || 'N/A'}</p></div>
+                        <div class="col-md-3"><p><strong>No. Caja:</strong> ${checkMissing(data.no_caja)}</p></div>
+                        <div class="col-md-3"><p><strong>T. Conservación:</strong> ${checkMissing(data.tiempo_conservacion)}</p></div>
                         <hr>
                         <div class="col-md-6"><p><strong>Clasificación:</strong> ${data.clasificacion || 'N/A'}</p></div>
                         <div class="col-md-6"><p><strong>Caracter Doc:</strong> ${data.caracter_documental || 'N/A'}</p></div>
                         <hr>
-                        <div class="col-md-4"><p><strong>No. Legajos:</strong> ${data.no_legajos || 'N/A'}</p></div>
-                        <div class="col-md-4"><p><strong>No. Hojas:</strong> ${data.no_hojas || 'N/A'}</p></div>
+                        <div class="col-md-4"><p><strong>No. Legajos:</strong> ${checkMissing(data.no_legajos)}</p></div>
+                        <div class="col-md-4"><p><strong>No. Hojas:</strong> ${checkMissing(data.no_hojas)}</p></div>
                         <div class="col-md-4"><p><strong>Preservación:</strong> ${data.preservacion || 'N/A'}</p></div>
                         <div class="col-md-12 mt-2">
                             <p><strong>Observaciones:</strong></p>
@@ -164,6 +180,49 @@
             .catch(error => {
                 document.getElementById('modalBody').innerHTML = '<div class="alert alert-danger">Error al cargar los detalles.</div>';
             });
+    }
+
+    function syncRemote(id) {
+        const btn = document.getElementById(`sync-btn-${id}`);
+        const originalText = btn.innerText;
+
+        const user = prompt("Ingresa el usuario de Sentre:");
+        if (!user) return;
+        const password = prompt("Ingresa la contraseña de Sentre:");
+        if (!password) return;
+
+        btn.disabled = true;
+        btn.innerText = 'Sincronizando...';
+
+        fetch('/api/sentre-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                sentre_user: user,
+                sentre_password: password,
+                record_id: id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.code === '200') {
+                alert('Sincronización exitosa: ' + data.message);
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+            } else {
+                alert('Error al sincronizar: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error en la comunicación con el servidor.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        });
     }
 </script>
 </body>

@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function(){
 });
 
 Route::post('/sentre-27-test', [\App\Http\Controllers\SentreController::class, 'getListadoDocumental']);
+Route::post('/sentre-sync', [\App\Http\Controllers\SentreController::class, 'syncRecordToRemote']);
 
 Route::get('/get-new-token/{user}', [\App\Http\Controllers\AccessTokenController::class, 'getNewToken']);
 

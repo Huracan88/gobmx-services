@@ -37,6 +37,17 @@ class SentreViewController extends Controller
             $query->where('descripcion', 'like', '%' . $request->get('descripcion') . '%');
         }
 
+        if ($request->get('incomplete')) {
+            $query->where(function($q) {
+                $q->whereNull('no_caja')->orWhere('no_caja', '')
+                  ->orWhereNull('fecha_inicio')->orWhere('fecha_inicio', '')
+                  ->orWhereNull('fecha_final')->orWhere('fecha_final', '')
+                  ->orWhereNull('tiempo_conservacion')->orWhere('tiempo_conservacion', '')
+                  ->orWhereNull('no_legajos')->orWhere('no_legajos', '')
+                  ->orWhereNull('no_hojas')->orWhere('no_hojas', '');
+            });
+        }
+
         $records = $query->paginate(20)->appends($request->all());
 
         return view('sentre.index', compact('users', 'records', 'selectedUserId', 'selectedType'));
@@ -45,6 +56,7 @@ class SentreViewController extends Controller
     public function show($id)
     {
         $record = SentreRecord::with('user')->findOrFail($id);
+        $record->append('is_incomplete');
         return response()->json($record);
     }
 }

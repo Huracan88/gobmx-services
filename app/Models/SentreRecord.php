@@ -34,4 +34,14 @@ class SentreRecord extends Model
     {
         return $this->belongsTo(SentreUser::class, 'sentre_user_id');
     }
+
+    public function getIsIncompleteAttribute()
+    {
+        return empty($this->no_caja) ||
+               empty($this->fecha_inicio) ||
+               empty($this->fecha_final) ||
+               empty($this->tiempo_conservacion) ||
+               empty($this->no_legajos) ||
+               empty($this->no_hojas);
+    }
 }

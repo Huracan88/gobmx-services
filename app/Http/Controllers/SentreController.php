@@ -81,6 +81,24 @@ class SentreController extends Controller
                 }
                 return results;
             ");
+
+        $getRowsFunction = (new JsFunction)->parameters(['tableSelector'])
+            ->body("
+                let table = document.querySelector(tableSelector);
+                let results = [];
+                if (table) {
+                    let rows = table.querySelectorAll('tr.list');
+                    rows.forEach(row => {
+                        let cells = row.querySelectorAll('td');
+                        let rowData = [];
+                        cells.forEach(cell => {
+                            rowData.push(cell.innerText.trim());
+                        });
+                        results.push(rowData);
+                    });
+                }
+                return results;
+            ");
         /////////////////////////////
 
 
@@ -127,20 +145,16 @@ class SentreController extends Controller
             );
 
             $tableSelector = '#anexo27 > table.formulario';
-            $tableText = $page->querySelectorEval($tableSelector, $getInnerTextFunction);
+            $tableRows = $page->evaluate($getRowsFunction, $tableSelector);
             $tableResults = $page->evaluate($getEditLinksFunction, $tableSelector);
 
-            $lineas = explode("\n\n\n",$tableText);
             $records = [];
             $allEditLinks = [];
-            foreach($lineas as $index => $l){
-                $campos = explode("\n\t\n",$l);
-                if($campos[0] == 'Editar')
-                    continue;
+            foreach($tableRows as $index => $campos){
 
-                if (isset($tableResults[$index - 1])) {
-                    $campos[0] = $tableResults[$index - 1]['id'];
-                    $allEditLinks[] = $tableResults[$index - 1]['href'];
+                if (isset($tableResults[$index])) {
+                    $campos[0] = $tableResults[$index]['id'];
+                    $allEditLinks[] = $tableResults[$index]['href'];
                 } else {
                     $allEditLinks[] = null;
                 }
@@ -178,18 +192,14 @@ class SentreController extends Controller
                     $page->goto($url);
 
                     $tableSelector = '#anexo27 > table.formulario';
-                    $tableText = $page->querySelectorEval($tableSelector, $getInnerTextFunction);
+                    $pageRows = $page->evaluate($getRowsFunction, $tableSelector);
                     $pageResults = $page->evaluate($getEditLinksFunction, $tableSelector);
 
-                    $lineas = explode("\n\n\n",$tableText);
-                    foreach($lineas as $index => $l){
-                        $campos = explode("\n\t\n",$l);
-                        if($campos[0] == 'Editar')
-                            continue;
+                    foreach($pageRows as $index => $campos){
 
-                        if (isset($pageResults[$index - 1])) {
-                            $campos[0] = $pageResults[$index - 1]['id'];
-                            $allEditLinks[] = $pageResults[$index - 1]['href'];
+                        if (isset($pageResults[$index])) {
+                            $campos[0] = $pageResults[$index]['id'];
+                            $allEditLinks[] = $pageResults[$index]['href'];
                         } else {
                             $allEditLinks[] = null;
                         }
@@ -348,6 +358,103 @@ class SentreController extends Controller
 
         return false;
 
+    }
+
+    private function getEditFormUrl(string $type) {
+        if ($type == 'concentracion')
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/frmanexo27c.php';
+        if ($type == 'tramite')
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/frmanexo27t.php';
+        if ($type == 'baja')
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/frmanexo27b.php';
+        if ($type == 'historico')
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/frmanexo27h.php';
+        return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/frmanexo27c.php'; // default
+    }
+
+    public function syncRecordToRemote(Request $request)
+    {
+        $data = $this->validate($request, [
+            'sentre_user' => 'required',
+            'sentre_password' => 'required',
+            'record_id' => 'required|exists:sentre_records,id',
+        ]);
+
+        $record = SentreRecord::findOrFail($data['record_id']);
+        $sentreUser = SentreUser::where('username', $data['sentre_user'])->first();
+
+        if (!$sentreUser || $record->sentre_user_id !== $sentreUser->id) {
+            return response()->json([
+                'code' => '403',
+                'message' => 'El registro no pertenece al usuario proporcionado.'
+            ], 403);
+        }
+
+        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+        $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
+        $submitURL = $this->getEditFormUrl($record->type);
+
+        $puppeteer = new Puppeteer;
+        $browser = $puppeteer->launch();
+        $page = $browser->newPage();
+
+        try {
+            $page->goto($loginURL);
+
+            $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
+                ->body("el.value = setText");
+
+            $page->querySelectorEval('#login', $setValueFunction, $data['sentre_user']);
+            $page->querySelectorEval('#password', $setValueFunction, $data['sentre_password']);
+            $page->click('#wrap > table > tbody > tr > td > table:nth-child(6) > tbody > tr > td > table > tbody > tr:nth-child(2) > td > form > table > tbody > tr:nth-child(5) > td:nth-child(4) > input');
+
+            // Esperar a que el login se procese
+            $page->waitForNavigation();
+
+            // Navegar al formulario de edición
+            $page->goto($editURL);
+
+            // Llenar el formulario con los datos de la DB
+            $page->querySelectorEval('input[name="fecha_trans"]', $setValueFunction, $record->fecha_transferencia ?? '');
+            $page->querySelectorEval('input[name="expediente"]', $setValueFunction, $record->expediente ?? '');
+            $page->querySelectorEval('textarea[name="descripcion"]', $setValueFunction, $record->descripcion ?? '');
+            $page->querySelectorEval('input[name="antiguedad"]', $setValueFunction, $record->anio_creacion ?? '');
+            $page->querySelectorEval('input[name="per_del"]', $setValueFunction, $record->fecha_inicio ?? '');
+            $page->querySelectorEval('input[name="per_al"]', $setValueFunction, $record->fecha_final ?? '');
+            $page->querySelectorEval('input[name="tiempo_conservacion"]', $setValueFunction, $record->tiempo_conservacion ?? '');
+            $page->querySelectorEval('input[name="n_legajos"]', $setValueFunction, $record->no_legajos ?? '');
+            $page->querySelectorEval('input[name="n_hojas"]', $setValueFunction, $record->no_hojas ?? '');
+            $page->querySelectorEval('input[name="preservacion"]', $setValueFunction, $record->preservacion ?? '');
+            $page->querySelectorEval('input[name="localizacion"]', $setValueFunction, $record->ubicacion_fisica ?? '');
+            $page->querySelectorEval('input[name="no_caja"]', $setValueFunction, $record->no_caja ?? '');
+            $page->querySelectorEval('input[name="clasificacion"]', $setValueFunction, $record->clasificacion ?? '');
+            $page->querySelectorEval('input[name="caracter"]', $setValueFunction, $record->caracter_documental ?? '');
+            $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
+
+            // Hacer click en guardar
+            $page->click('input[name="modificar"]');
+
+            // Esperar un momento para que aparezca el mensaje de éxito
+            $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 5000]);
+
+            $browser->close();
+            $browser = null;
+
+            return response()->json([
+                'code' => '200',
+                'message' => 'Registro sincronizado exitosamente con el servidor remoto.'
+            ]);
+
+        } catch (\Exception $e) {
+            if (isset($browser)) {
+                $this->takeScreenshot($page);
+                $browser->close();
+            }
+            return response()->json([
+                'code' => '500',
+                'message' => 'Error al sincronizar con el servidor remoto: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     private function takeScreenshot($page){
