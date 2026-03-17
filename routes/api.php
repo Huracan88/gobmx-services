@@ -29,5 +29,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/sipoa', [\App\Http\Controllers\SipoaController::class, 'test']);
 });
 
+Route::post('/sentre-27-test', [\App\Http\Controllers\SentreController::class, 'getListadoDocumental']);
+
 Route::get('/get-new-token/{user}', [\App\Http\Controllers\AccessTokenController::class, 'getNewToken']);
 

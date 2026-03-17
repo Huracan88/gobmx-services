@@ -22,8 +22,10 @@ class SentreController extends Controller
             'action' => 'required|in:concentracion,baja,tramite,historico',
         ]);
 
-        $loginURL = 'http://sentre.secoes.qroo.gob.mx/login.php';
-        $closeSessionUrl = 'http://sentre.secoes.qroo.gob.mx/sistema/exit.php';
+//        dd($data);
+
+        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+        $closeSessionUrl = 'http://sentre.sabgob.qroo.gob.mx/sistema/exit.php';
         $baseURL = $this->getBaseUrl($data['action']);
 
 
@@ -177,16 +179,16 @@ class SentreController extends Controller
     private function getBaseUrl(string $action) {
 
         if($action == 'concentracion')
-            return 'http://sentre.secoes.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27c';
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27c';
 
         if($action == 'tramite')
-            return 'http://sentre.secoes.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27t';
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27t';
 
         if($action == 'baja')
-            return 'http://sentre.secoes.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27b';
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27b';
 
         if($action == 'historico')
-            return 'http://sentre.secoes.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27h';
+            return 'http://sentre.sabgob.qroo.gob.mx/sistema/anexo27/anexo27.php?tipo_anexo27=anexo27h';
 
         return false;
 
