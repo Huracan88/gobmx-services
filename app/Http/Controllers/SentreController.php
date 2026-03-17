@@ -40,14 +40,17 @@ class SentreController extends Controller
         $closeSessionUrl = 'http://sentre.sabgob.qroo.gob.mx/sistema/exit.php';
 
         try {
-            $page->goto($closeSessionUrl);
-            $page->goto($loginURL);
-            $logoutSelector = '//*[@id="wrap"]/table/tbody/tr/td/table[2]/tbody/tr/td/table/tbody/tr[1]/td/div';
-            $page->tryCatch->waitForXPath($logoutSelector, ['timeout' => 2000]);
+            // Intentar ir a la página de salida primero
+            $page->goto($closeSessionUrl, ['timeout' => 10000]);
+            $page->goto($loginURL, ['timeout' => 15000]);
         } catch (\Exception $e) {
-            // Ignorar errores al cerrar sesión
+            // Ignorar errores al navegar a la salida, lo importante es cerrar el navegador
         } finally {
-            $browser->close();
+            try {
+                $browser->close();
+            } catch (\Exception $e) {
+                // Navegador ya cerrado o error crítico
+            }
         }
     }
 
@@ -371,7 +374,7 @@ class SentreController extends Controller
 
     public function syncRecordToRemote(Request $request)
     {
-
+        set_time_limit(0);
 
         $data = $this->validate($request, [
             'sentre_user' => 'required',
@@ -418,6 +421,14 @@ class SentreController extends Controller
             return response()->json([
                 'code' => '500',
                 'message' => 'Error al sincronizar con el servidor remoto: ' . $e->getMessage()
+            ], 500);
+        } catch (\Throwable $e) {
+            if (isset($browser)) {
+                $this->logoutSentre($page, $browser);
+            }
+            return response()->json([
+                'code' => '500',
+                'message' => 'Error fatal de sistema: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -500,13 +511,21 @@ class SentreController extends Controller
                 'code' => '500',
                 'message' => 'Error crítico durante la sincronización masiva: ' . $e->getMessage()
             ], 500);
+        } catch (\Throwable $e) {
+            if (isset($browser)) {
+                $this->logoutSentre($page, $browser);
+            }
+            return response()->json([
+                'code' => '500',
+                'message' => 'Error fatal de sistema durante la sincronización masiva: ' . $e->getMessage()
+            ], 500);
         }
     }
 
     private function processRecordUpdate($page, $record)
     {
         $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
-        $page->goto($editURL);
+        $page->goto($editURL,['timeout' => 15000]);
 
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
