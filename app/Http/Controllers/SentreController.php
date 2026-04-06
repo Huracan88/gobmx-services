@@ -568,16 +568,30 @@ class SentreController extends Controller
         // Hacer click en guardar
         $page->click('#modificar');
 
-        $page->waitForNavigation(['waitUntil' => 'networkidle0']);
+        try {
+            // Esperamos a que aparezca el mensaje de éxito directamente.
+            // Aumentamos el timeout a 10 segundos por si el servidor remoto está lento.
+            $page->waitForFunction(
+                (new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"),
+                ['timeout' => 10000]
+            );
 
-        // Esperar mensaje de éxito
-        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"));
+            Log::info("Expediente actualizado y guardado exitosamente: {$record->expediente} (ID: {$record->record_id})");
 
-        Log::info("Expediente actualizado y guardado exitosamente: {$record->expediente} (ID: {$record->record_id})");
+        } catch (\Exception $e) {
+            // Si falla por timeout, tomamos una captura para ver qué pasó (¿Error 500? ¿Validación fallida?)
+            $this->takeScreenshot($page);
 
+            // Verificamos si el mensaje de error está presente en lugar del de éxito
+            $hasError = $page->evaluate((new JsFunction)->body("return document.body.innerText.includes('Error') || document.body.innerText.includes('incorrecto')"));
 
-        sleep(1.5);
-        $this->takeScreenshot($page);
+            if ($hasError) {
+                throw new \Exception("El servidor remoto devolvió un error de validación al guardar.");
+            }
+
+            throw new \Exception("Timeout esperando confirmación de guardado: " . $e->getMessage());
+        }
+
     }
 
     private function takeScreenshot($page){
