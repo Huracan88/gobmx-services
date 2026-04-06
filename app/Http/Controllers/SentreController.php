@@ -466,8 +466,6 @@ class SentreController extends Controller
 
         $records = $query->get();
 
-        dd($records);
-
         if ($records->isEmpty()) {
             return response()->json([
                 'code' => '200',
