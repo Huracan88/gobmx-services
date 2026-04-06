@@ -16,11 +16,14 @@ use Illuminate\Support\Facades\Log;
 class SentreController extends Controller
 {
 
-
     private function loginSentre($page, $username, $password)
     {
         $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+
         $page->goto($loginURL);
+
+        Log::info('Login URL: '.$loginURL);
+        $this->takeScreenshot($page);
 
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
@@ -31,6 +34,8 @@ class SentreController extends Controller
 
         $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
         $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 15000]);
+        Log::info('Title Selector: '.$titleSelector);
+        $this->takeScreenshot($page);
     }
 
     private function logoutSentre($page, $browser)
@@ -395,7 +400,7 @@ class SentreController extends Controller
             ], 403);
         }
 
-        $puppeteer = new Puppeteer(['read_timeout' => 65]);
+        $puppeteer = new Puppeteer(['read_timeout' => 30]);
         $browser = $puppeteer->launch();
         $page = $browser->newPage();
 
@@ -532,7 +537,8 @@ class SentreController extends Controller
         $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
         $page->goto($editURL,['timeout' => 15000]);
 
-        Log::info("Abriendo página de edición para el expediente: {$record->expediente} (ID: {$record->record_id})");
+        Log::info("Abriendo página de edición para el expediente: {$record->expediente} (ID: {$record->record_id}) URL: {$editURL}" );
+        $this->takeScreenshot($page);
 
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
@@ -557,20 +563,26 @@ class SentreController extends Controller
 
         $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
 
+        $this->takeScreenshot($page);
+
         // Hacer click en guardar
         $page->click('input[name="modificar"]');
+
+
 
         // Esperar mensaje de éxito
         $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"));
 
         Log::info("Expediente actualizado y guardado exitosamente: {$record->expediente} (ID: {$record->record_id})");
+
+        $this->takeScreenshot($page);
     }
 
     private function takeScreenshot($page){
         try {
             $screenshot = 'sentre_' .  uniqid() .'.png';
             $path = storage_path('app/puppeter-screenshots/'.$screenshot);
-            $page->screenshot( ['path' => $path ]);
+            $page->screenshot( ['path' => $path,'fullPage' => true, 'omitBackground' => true, 'type' => 'png' ]);
         } catch (\Exception $e) {
             // No podemos tomar la captura, probablemente el navegador se cerró
         }
