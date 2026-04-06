@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class SentreController extends Controller
 {
-
+    private $shot = 0;
     private function loginSentre($page, $username, $password)
     {
         $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
@@ -538,7 +538,7 @@ class SentreController extends Controller
         $page->goto($editURL,['timeout' => 15000]);
 
         Log::info("Abriendo página de edición para el expediente: {$record->expediente} (ID: {$record->record_id}) URL: {$editURL}" );
-        $this->takeScreenshot($page);
+//        $this->takeScreenshot($page);
 
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
@@ -566,21 +566,25 @@ class SentreController extends Controller
         $this->takeScreenshot($page);
 
         // Hacer click en guardar
-        $page->click('input[name="modificar"]');
+        $page->click('#modificar');
 
-
+        $page->waitForNavigation(['waitUntil' => 'networkidle0']);
 
         // Esperar mensaje de éxito
         $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"));
 
         Log::info("Expediente actualizado y guardado exitosamente: {$record->expediente} (ID: {$record->record_id})");
 
+
+        sleep(1.5);
         $this->takeScreenshot($page);
     }
 
     private function takeScreenshot($page){
         try {
-            $screenshot = 'sentre_' .  uniqid() .'.png';
+            $this->shot++;
+
+            $screenshot = 'sentre_' .$this->shot.'_' . uniqid() .'.png';
             $path = storage_path('app/puppeter-screenshots/'.$screenshot);
             $page->screenshot( ['path' => $path,'fullPage' => true, 'omitBackground' => true, 'type' => 'png' ]);
         } catch (\Exception $e) {
