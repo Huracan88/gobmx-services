@@ -10,6 +10,7 @@ use Nesk\Puphpeteer\Puppeteer;
 use Nesk\Rialto\Data\JsFunction;
 use App\Models\SentreUser;
 use App\Models\SentreRecord;
+use Illuminate\Support\Facades\Log;
 
 
 class SentreController extends Controller
@@ -34,15 +35,16 @@ class SentreController extends Controller
 
     private function logoutSentre($page, $browser)
     {
-        if (!$browser) return;
+//        if (!$browser) return;
 
-        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
+//        $loginURL = 'http://sentre.sabgob.qroo.gob.mx/login.php';
         $closeSessionUrl = 'http://sentre.sabgob.qroo.gob.mx/sistema/exit.php';
 
         try {
             // Intentar ir a la página de salida primero
             $page->goto($closeSessionUrl, ['timeout' => 10000]);
-            $page->goto($loginURL, ['timeout' => 15000]);
+//            $page->goto($loginURL, ['timeout' => 15000]);
+//            $page->goto($closeSessionUrl, ['timeout' => 10000]);
         } catch (\Exception $e) {
             // Ignorar errores al navegar a la salida, lo importante es cerrar el navegador
         } finally {
@@ -69,7 +71,7 @@ class SentreController extends Controller
 
         $baseURL = $this->getBaseUrl($data['action']);
 
-        $puppeteer = new Puppeteer;
+        $puppeteer = new Puppeteer(['read_timeout' => 65]);
         $browser = $puppeteer->launch();
 
         $page = $browser->newPage();
@@ -393,7 +395,7 @@ class SentreController extends Controller
             ], 403);
         }
 
-        $puppeteer = new Puppeteer;
+        $puppeteer = new Puppeteer(['read_timeout' => 65]);
         $browser = $puppeteer->launch();
         $page = $browser->newPage();
 
@@ -453,13 +455,18 @@ class SentreController extends Controller
 
         $query = SentreRecord::where('sentre_user_id', $sentreUser->id)
             ->where('anio_creacion', $data['year'])
-            ->whereNull('last_sync_up');
+            ->whereNull('last_sync_up')
+            ->take(25);
+
+        Log::info("Iniciando sincronización de registros para el año {$data['year']} del usuario {$sentreUser->username} (ID: {$sentreUser->id}) se procesarán en 25 registros por vez.");
 
         if (isset($data['type'])) {
             $query->where('type', $data['type']);
         }
 
         $records = $query->get();
+
+        dd($records);
 
         if ($records->isEmpty()) {
             return response()->json([
@@ -468,7 +475,7 @@ class SentreController extends Controller
             ]);
         }
 
-        $puppeteer = new Puppeteer;
+        $puppeteer = new Puppeteer(['read_timeout' => 65]);
         $browser = $puppeteer->launch();
         $page = $browser->newPage();
 
@@ -527,6 +534,8 @@ class SentreController extends Controller
         $editURL = $this->getEditFormUrl($record->type) . '?accion=modificar&id_anexo=' . $record->record_id . '&page=&orden=';
         $page->goto($editURL,['timeout' => 15000]);
 
+        Log::info("Abriendo página de edición para el expediente: {$record->expediente} (ID: {$record->record_id})");
+
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
 
@@ -554,7 +563,9 @@ class SentreController extends Controller
         $page->click('input[name="modificar"]');
 
         // Esperar mensaje de éxito
-        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"), ['timeout' => 15000]);
+        $page->waitForFunction((new JsFunction)->body("return document.body.innerText.includes('¡Cambios Guardados exitosamente!')"));
+
+        Log::info("Expediente actualizado y guardado exitosamente: {$record->expediente} (ID: {$record->record_id})");
     }
 
     private function takeScreenshot($page){
