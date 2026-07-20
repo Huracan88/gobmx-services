@@ -23,7 +23,7 @@ class SentreController extends Controller
         $page->goto($loginURL);
 
         Log::info('Login URL: '.$loginURL);
-        $this->takeScreenshot($page);
+//        $this->takeScreenshot($page);
 
         $setValueFunction = (new JsFunction)->parameters(['el', 'setText'])
             ->body("el.value = setText");
@@ -35,7 +35,7 @@ class SentreController extends Controller
         $titleSelector = '//*[@id="wrap"]/table/tbody/tr[5]/td[2]/table/tbody/tr[2]/td/p';
         $page->tryCatch->waitForXPath($titleSelector, ['timeout' => 15000]);
         Log::info('Title Selector: '.$titleSelector);
-        $this->takeScreenshot($page);
+//        $this->takeScreenshot($page);
     }
 
     private function logoutSentre($page, $browser)
@@ -461,7 +461,7 @@ class SentreController extends Controller
         $query = SentreRecord::where('sentre_user_id', $sentreUser->id)
             ->where('anio_creacion', $data['year'])
             ->whereNull('last_sync_up')
-            ->take(25);
+            ->take(100);
 
         Log::info("Iniciando sincronización de registros para el año {$data['year']} del usuario {$sentreUser->username} (ID: {$sentreUser->id}) se procesarán en 25 registros por vez.");
 
@@ -563,12 +563,15 @@ class SentreController extends Controller
 
         $page->querySelectorEval('textarea[name="observaciones"]', $setValueFunction, $record->observaciones ?? '');
 
-        $this->takeScreenshot($page);
+//        $this->takeScreenshot($page);
 
         // Hacer click en guardar
         $page->click('#modificar');
 
         try {
+
+            $page->waitForSelector('body', ['timeout' => 10000]);
+
             // Esperamos a que aparezca el mensaje de éxito directamente.
             // Aumentamos el timeout a 10 segundos por si el servidor remoto está lento.
             $page->waitForFunction(
